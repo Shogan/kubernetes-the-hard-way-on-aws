@@ -6,15 +6,14 @@ In this lab you will generate a kubeconfig file for the `kubectl` command line u
 
 ## The Admin Kubernetes Configuration File
 
-Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the IP address assigned to the external load balancer fronting the Kubernetes API Servers will be used.
+Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the public DNS name assigned to the external load balancer fronting the Kubernetes API Servers will be used.
 
 Generate a kubeconfig file suitable for authenticating as the `admin` user:
 
 ```
 {
-  KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-    --region $(gcloud config get-value compute/region) \
-    --format 'value(address)')
+  KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
+  --load-balancer-arns ${LOAD_BALANCER_ARN} --output text --query 'LoadBalancers[0].DNSName')
 
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
@@ -61,10 +60,10 @@ kubectl get nodes
 > output
 
 ```
-NAME       STATUS   ROLES    AGE    VERSION
-worker-0   Ready    <none>   2m9s   v1.15.3
-worker-1   Ready    <none>   2m9s   v1.15.3
-worker-2   Ready    <none>   2m9s   v1.15.3
+NAME       STATUS   ROLES    AGE     VERSION
+worker-0   Ready    <none>   16m     v1.15.3
+worker-1   Ready    <none>   6m26s   v1.15.3
+worker-2   Ready    <none>   3m18s   v1.15.3
 ```
 
 Next: [Provisioning Pod Network Routes](11-pod-network-routes.md)

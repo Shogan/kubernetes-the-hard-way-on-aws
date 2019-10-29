@@ -2,6 +2,24 @@
 
 In this lab you will provision a [PKI Infrastructure](https://en.wikipedia.org/wiki/Public_key_infrastructure) using CloudFlare's PKI toolkit, [cfssl](https://github.com/cloudflare/cfssl), then use it to bootstrap a Certificate Authority, and generate TLS certificates for the following components: etcd, kube-apiserver, kube-controller-manager, kube-scheduler, kubelet, and kube-proxy.
 
+## Setting up cfssl
+
+To clone the source code for cfssl, inspect, and build it:
+
+```
+git clone git@github.com:cloudflare/cfssl.git $GOPATH/src/github.com/cloudflare/cfssl
+cd $GOPATH/src/github.com/cloudflare/cfssl
+make
+```
+
+The built binaries will be located in `$GOPATH/src/github.com/cloudflare/cfssl/bin`. Add this path to your `$PATH` or move them to a location already in your system $PATH.
+
+Verify cfssl works by running:
+
+```
+cfssl version
+```
+
 ## Certificate Authority
 
 In this section you will provision a Certificate Authority that can be used to generate additional TLS certificates.
@@ -54,8 +72,9 @@ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 Results:
 
 ```
-ca-key.pem
-ca.pem
+ca.csr (the signing request)
+ca-key.pem (the certificate private key)
+ca.pem (the certificate)
 ```
 
 ## Client and Server Certificates
@@ -101,6 +120,8 @@ cfssl gencert \
 Results:
 
 ```
+admin.csr
+admin-csr.json
 admin-key.pem
 admin.pem
 ```
@@ -132,11 +153,9 @@ cat > ${instance}-csr.json <<EOF
 }
 EOF
 
-EXTERNAL_IP=$(gcloud compute instances describe ${instance} \
-  --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
+EXTERNAL_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${instance}" | jq -r '.Reservations | .[] | .Instances | .[] | select(.State.Name!="terminated") | .PublicIpAddress')
 
-INTERNAL_IP=$(gcloud compute instances describe ${instance} \
-  --format 'value(networkInterfaces[0].networkIP)')
+INTERNAL_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${instance}" | jq -r '.Reservations | .[] | .Instances | .[] | select(.State.Name!="terminated") | .PrivateIpAddress')
 
 cfssl gencert \
   -ca=ca.pem \
@@ -148,7 +167,7 @@ cfssl gencert \
 done
 ```
 
-Results:
+Relevant certificate results:
 
 ```
 worker-0-key.pem
@@ -195,7 +214,7 @@ cfssl gencert \
 }
 ```
 
-Results:
+Relevant certificate results:
 
 ```
 kube-controller-manager-key.pem
@@ -239,7 +258,7 @@ cfssl gencert \
 }
 ```
 
-Results:
+Relevant certificate results:
 
 ```
 kube-proxy-key.pem
@@ -282,7 +301,7 @@ cfssl gencert \
 }
 ```
 
-Results:
+Relevant certificate results:
 
 ```
 kube-scheduler-key.pem
@@ -292,16 +311,12 @@ kube-scheduler.pem
 
 ### The Kubernetes API Server Certificate
 
-The `kubernetes-the-hard-way` static IP address will be included in the list of subject alternative names for the Kubernetes API Server certificate. This will ensure the certificate can be validated by remote clients.
+The `kubernetes-the-hard-way` static IP address will be included in the list of subject alternative names for the Kubernetes API Server certificate. This will ensure the certificate can be validated by remote clients. In AWS, this will be the load balancer
 
 Generate the Kubernetes API Server certificate and private key:
 
 ```
 {
-
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
 
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
@@ -337,7 +352,7 @@ cfssl gencert \
 
 > The Kubernetes API server is automatically assigned the `kubernetes` internal dns name, which will be linked to the first IP address (`10.32.0.1`) from the address range (`10.32.0.0/24`) reserved for internal cluster services during the [control plane bootstrapping](08-bootstrapping-kubernetes-controllers.md#configure-the-kubernetes-api-server) lab.
 
-Results:
+Relevant certificate results:
 
 ```
 kubernetes-key.pem
@@ -382,7 +397,7 @@ cfssl gencert \
 }
 ```
 
-Results:
+Relevant certificate results:
 
 ```
 service-account-key.pem
@@ -392,11 +407,15 @@ service-account.pem
 
 ## Distribute the Client and Server Certificates
 
-Copy the appropriate certificates and private keys to each worker instance:
+Copy the appropriate certificates and private keys to each worker instance. If you haven't connected to these instances yet with the public IPs, you'll need to add each to your list of known hosts for SSH/SCP.
 
 ```
 for instance in worker-0 worker-1 worker-2; do
-  gcloud compute scp ca.pem ${instance}-key.pem ${instance}.pem ${instance}:~/
+  PUBLIC_IP=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=${instance}" \
+    --output text --query 'Reservations[].Instances[].PublicIpAddress')
+
+  scp -i kubernetes-the-hard-way.pem ${instance}-key.pem ${instance}.pem ubuntu@${PUBLIC_IP}:~/
 done
 ```
 
@@ -404,8 +423,13 @@ Copy the appropriate certificates and private keys to each controller instance:
 
 ```
 for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
-    service-account-key.pem service-account.pem ${instance}:~/
+  PUBLIC_IP=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=${instance}" \
+    --output text --query 'Reservations[].Instances[].PublicIpAddress')
+
+  scp -i kubernetes-the-hard-way.pem \
+    ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
+    service-account-key.pem service-account.pem ubuntu@${PUBLIC_IP}:~/
 done
 ```
 

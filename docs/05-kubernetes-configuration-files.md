@@ -10,12 +10,11 @@ In this section you will generate kubeconfig files for the `controller manager`,
 
 Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the IP address assigned to the external load balancer fronting the Kubernetes API Servers will be used.
 
-Retrieve the `kubernetes-the-hard-way` static IP address:
+Retrieve the `kubernetes-the-hard-way` Network Load Balancer public DNS name if you haven't already got it in a shell variable:
 
 ```
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
+  --load-balancer-arns ${LOAD_BALANCER_ARN} --output text --query 'LoadBalancers[0].DNSName')
 ```
 
 ### The kubelet Kubernetes Configuration File
@@ -190,16 +189,20 @@ Results:
 admin.kubeconfig
 ```
 
-
-## 
-
 ## Distribute the Kubernetes Configuration Files
 
 Copy the appropriate `kubelet` and `kube-proxy` kubeconfig files to each worker instance:
 
 ```
 for instance in worker-0 worker-1 worker-2; do
-  gcloud compute scp ${instance}.kubeconfig kube-proxy.kubeconfig ${instance}:~/
+  PUBLIC_IP=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=${instance}" \
+    --output text --query 'Reservations[].Instances[].PublicIpAddress')
+
+  scp -i kubernetes-the-hard-way.pem \
+    ${instance}.kubeconfig \
+    kube-proxy.kubeconfig \
+    ubuntu@${PUBLIC_IP}:~/
 done
 ```
 
@@ -207,7 +210,13 @@ Copy the appropriate `kube-controller-manager` and `kube-scheduler` kubeconfig f
 
 ```
 for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${instance}:~/
+  PUBLIC_IP=$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=${instance}" \
+    --output text --query 'Reservations[].Instances[].PublicIpAddress')
+
+  scp -i kubernetes-the-hard-way.pem \
+    admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig \
+    ubuntu@${PUBLIC_IP}:~/
 done
 ```
 

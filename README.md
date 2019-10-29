@@ -1,6 +1,10 @@
-# Kubernetes The Hard Way
+# Kubernetes The Hard Way on AWS
 
-This tutorial walks you through setting up Kubernetes the hard way. This guide is not for people looking for a fully automated command to bring up a Kubernetes cluster. If that's you then check out [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine), or the [Getting Started Guides](https://kubernetes.io/docs/setup).
+This repo is a fork of This is a fork of the original [Kubernetes The Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) git repo by Kelsey Hightower.
+
+This is focused on setting up Kubernetes from scratch on Amazon Web Services (AWS). I have tried to remain true to the original with a "no scripts" approach. In other words, you're forced to go through everything component-by-component, from creating the compute instances, to provisioning certificates, encryption, etcd, setting up the controllers, workers, pod networking and more...
+
+This tutorial walks you through setting up Kubernetes the hard way. This guide is not for people looking for a fully automated command to bring up a Kubernetes cluster.
 
 Kubernetes The Hard Way is optimized for learning, which means taking the long route to ensure you understand each task required to bootstrap a Kubernetes cluster.
 

@@ -2,17 +2,15 @@
 
 Kubernetes components are stateless and store cluster state in [etcd](https://github.com/etcd-io/etcd). In this lab you will bootstrap a three node etcd cluster and configure it for high availability and secure remote access.
 
+Note on high availability within the constraints of this lab/exercise: The controller nodes we've created are in a single AWS availability zone (AZ) which means that technically, if the AWS AZ went down (this is a single location in a data center), then we could lose all state in etcd. However, being lab exercise, this is fine, as long as we understand this limitation.
+
 ## Prerequisites
 
-The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
+The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance with SSH and run the etc install and configuration for each. Example:
 
 ```
-gcloud compute ssh controller-0
+ssh -i kubernetes-the-hard-way.pem ubuntu@x.x.x.x
 ```
-
-### Running commands in parallel with tmux
-
-[tmux](https://github.com/tmux/tmux/wiki) can be used to run commands on multiple compute instances at the same time. See the [Running commands in parallel with tmux](01-prerequisites.md#running-commands-in-parallel-with-tmux) section in the Prerequisites lab.
 
 ## Bootstrapping an etcd Cluster Member
 
@@ -46,14 +44,16 @@ Extract and install the `etcd` server and the `etcdctl` command line utility:
 The instance internal IP address will be used to serve client requests and communicate with etcd cluster peers. Retrieve the internal IP address for the current compute instance:
 
 ```
-INTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)
+INTERNAL_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 ```
 
 Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current compute instance:
 
+We stored this information with custom metadata when we started the EC2 instances with the `aws ec2 run-instance`commands.
+
 ```
-ETCD_NAME=$(hostname -s)
+ETCD_NAME=$(curl -s http://169.254.169.254/latest/user-data/ | tr "|" "\n" \
+  | grep "^name" | cut -d"=" -f2)
 ```
 
 Create the `etcd.service` systemd unit file:
@@ -102,6 +102,12 @@ EOF
 }
 ```
 
+Finally, confirm the etcd service is up and running with:
+
+```
+systemctl status etcd
+```
+
 > Remember to run the above commands on each controller node: `controller-0`, `controller-1`, and `controller-2`.
 
 ## Verification
@@ -119,9 +125,9 @@ sudo ETCDCTL_API=3 etcdctl member list \
 > output
 
 ```
-3a57933972cb5131, started, controller-2, https://10.240.0.12:2380, https://10.240.0.12:2379
-f98dc20bce6225a0, started, controller-0, https://10.240.0.10:2380, https://10.240.0.10:2379
-ffed16798470cab5, started, controller-1, https://10.240.0.11:2380, https://10.240.0.11:2379
+3a57933972cb5131, started, controller-2, https://10.240.0.12:2380, https://10.240.0.12:2379, false
+f98dc20bce6225a0, started, controller-0, https://10.240.0.10:2380, https://10.240.0.10:2379, false
+ffed16798470cab5, started, controller-1, https://10.240.0.11:2380, https://10.240.0.11:2379, false
 ```
 
 Next: [Bootstrapping the Kubernetes Control Plane](08-bootstrapping-kubernetes-controllers.md)

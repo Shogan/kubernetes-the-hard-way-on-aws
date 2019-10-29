@@ -7,12 +7,8 @@ In this lab you will bootstrap three Kubernetes worker nodes. The following comp
 The commands in this lab must be run on each worker instance: `worker-0`, `worker-1`, and `worker-2`. Login to each worker instance using the `gcloud` command. Example:
 
 ```
-gcloud compute ssh worker-0
+ssh -i kubernetes-the-hard-way.pem ubuntu@x.x.x.x
 ```
-
-### Running commands in parallel with tmux
-
-[tmux](https://github.com/tmux/tmux/wiki) can be used to run commands on multiple compute instances at the same time. See the [Running commands in parallel with tmux](01-prerequisites.md#running-commands-in-parallel-with-tmux) section in the Prerequisites lab.
 
 ## Provisioning a Kubernetes Worker Node
 
@@ -37,7 +33,7 @@ Verify if swap is enabled:
 sudo swapon --show
 ```
 
-If output is empthy then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
+If the output is empty then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
 
 ```
 sudo swapoff -a
@@ -87,11 +83,11 @@ Install the worker binaries:
 
 ### Configure CNI Networking
 
-Retrieve the Pod CIDR range for the current compute instance:
+Retrieve the Pod CIDR range for the current compute instance (we stored this with custom EC2 metadata when creating the worker instances):
 
 ```
-POD_CIDR=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)
+POD_CIDR=$(curl -s http://169.254.169.254/latest/user-data/ | tr "|" "\n" \
+  | grep "^pod-cidr" | cut -d"=" -f2)
 ```
 
 Create the `bridge` network configuration file:
@@ -176,10 +172,20 @@ EOF
 
 ### Configure the Kubelet
 
+Start by getting the name of the worker instance that we setup earlier in the instance metadata, and changing the system hostname to match it:
+
+```
+WORKER_NAME=$(curl -s http://169.254.169.254/latest/user-data/ | tr "|" "\n" \
+  | grep "^name" | cut -d"=" -f2)
+sudo hostname $WORKER_NAME
+```
+
+Move the kubelet certificates into place:
+
 ```
 {
-  sudo mv ${HOSTNAME}-key.pem ${HOSTNAME}.pem /var/lib/kubelet/
-  sudo mv ${HOSTNAME}.kubeconfig /var/lib/kubelet/kubeconfig
+  sudo mv ${WORKER_NAME}-key.pem ${WORKER_NAME}.pem /var/lib/kubelet/
+  sudo mv ${WORKER_NAME}.kubeconfig /var/lib/kubelet/kubeconfig
   sudo mv ca.pem /var/lib/kubernetes/
 }
 ```
@@ -205,8 +211,8 @@ clusterDNS:
 podCIDR: "${POD_CIDR}"
 resolvConf: "/run/systemd/resolve/resolv.conf"
 runtimeRequestTimeout: "15m"
-tlsCertFile: "/var/lib/kubelet/${HOSTNAME}.pem"
-tlsPrivateKeyFile: "/var/lib/kubelet/${HOSTNAME}-key.pem"
+tlsCertFile: "/var/lib/kubelet/${WORKER_NAME}.pem"
+tlsPrivateKeyFile: "/var/lib/kubelet/${WORKER_NAME}-key.pem"
 EOF
 ```
 
