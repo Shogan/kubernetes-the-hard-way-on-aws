@@ -6,55 +6,48 @@ In this lab you will create a route for each worker node that maps the node's Po
 
 > There are [other ways](https://kubernetes.io/docs/concepts/cluster-administration/networking/#how-to-achieve-this) to implement the Kubernetes networking model.
 
-## The Routing Table
+CNI plugins like calico, weave, and flannel usually offload this task for us with more automated Kubernetes installations, however we'll learn more by adding network routes ourselves using the Amazon VPC routes feature. This method will also allow us to visually inspect our routes in the VPC console afterwards.
 
-In this section you will gather the information required to create routes in the `kubernetes-the-hard-way` VPC network.
+## Adding routes to the VPC route table
 
-Print the internal IP address and Pod CIDR range for each worker instance:
+The following will (for each worker node):
+
+* Get the instance private IP address
+* Get the Instance ID
+* Get the POD CIDR that we set on each worker's custom metadata
+* Create a route table entry in the main VPC route table with a destination of the POD CIDR and a target of each relevant worker's ENI (Elastic Network Interface).
+
+Make sure your `ROUTE_TABLE_ID` shell variable is still valid and points to your VPC route table Id. Example:
+
+```
+ROUTE_TABLE_ID=rtb-01943b17dfbef2f6b
+```
+
+Then do:
 
 ```
 for instance in worker-0 worker-1 worker-2; do
-  gcloud compute instances describe ${instance} \
-    --format 'value[separator=" "](networkInterfaces[0].networkIP,metadata.items[0].value)'
+  INSTANCE_ID_IP="$(aws ec2 describe-instances \
+    --filters "Name=tag:Name,Values=${instance}" \
+    --output text --query 'Reservations[].Instances[].[InstanceId,PrivateIpAddress]')"
+  INSTANCE_ID="$(echo "${INSTANCE_ID_IP}" | cut -f1)"
+  INSTANCE_IP="$(echo "${INSTANCE_ID_IP}" | cut -f2)"
+  pod_cidr="$(aws ec2 describe-instance-attribute \
+    --instance-id "${INSTANCE_ID}" \
+    --attribute userData \
+    --output text --query 'UserData.Value' \
+    | base64 --decode | tr "|" "\n" | grep "^pod-cidr" | cut -d'=' -f2)"
+  echo "${INSTANCE_IP} ${pod_cidr}"
+
+  aws ec2 create-route \
+    --route-table-id "${ROUTE_TABLE_ID}" \
+    --destination-cidr-block "${pod_cidr}" \
+    --instance-id "${INSTANCE_ID}"
 done
 ```
 
-> output
+## Checking the routes
 
-```
-10.240.0.20 10.200.0.0/24
-10.240.0.21 10.200.1.0/24
-10.240.0.22 10.200.2.0/24
-```
-
-## Routes
-
-Create network routes for each worker instance:
-
-```
-for i in 0 1 2; do
-  gcloud compute routes create kubernetes-route-10-200-${i}-0-24 \
-    --network kubernetes-the-hard-way \
-    --next-hop-address 10.240.0.2${i} \
-    --destination-range 10.200.${i}.0/24
-done
-```
-
-List the routes in the `kubernetes-the-hard-way` VPC network:
-
-```
-gcloud compute routes list --filter "network: kubernetes-the-hard-way"
-```
-
-> output
-
-```
-NAME                            NETWORK                  DEST_RANGE     NEXT_HOP                  PRIORITY
-default-route-081879136902de56  kubernetes-the-hard-way  10.240.0.0/24  kubernetes-the-hard-way   1000
-default-route-55199a5aa126d7aa  kubernetes-the-hard-way  0.0.0.0/0      default-internet-gateway  1000
-kubernetes-route-10-200-0-0-24  kubernetes-the-hard-way  10.200.0.0/24  10.240.0.20               1000
-kubernetes-route-10-200-1-0-24  kubernetes-the-hard-way  10.200.1.0/24  10.240.0.21               1000
-kubernetes-route-10-200-2-0-24  kubernetes-the-hard-way  10.200.2.0/24  10.240.0.22               1000
-```
+Use the VPC / Route Tables / Routes console to verify the new routes are showing as `active`.
 
 Next: [Deploying the DNS Cluster Add-on](12-dns-addon.md)
