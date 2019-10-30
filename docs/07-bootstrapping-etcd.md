@@ -102,7 +102,7 @@ EOF
 }
 ```
 
-Finally, confirm the etcd service is up and running with:
+Finally, confirm the etcd service is up and running with (you may see some connection errors in the logs until all members of the etcd cluster, i.e. all controller etcd instances, are running):
 
 ```
 systemctl status etcd
