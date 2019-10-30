@@ -134,9 +134,10 @@ Generate a certificate and private key for each Kubernetes worker node:
 
 ```
 for instance in worker-0 worker-1 worker-2; do
+INSTANCE_HOSTNAME="ip-10-240-0-2${i}"
 cat > ${instance}-csr.json <<EOF
 {
-  "CN": "system:node:${instance}",
+  "CN": "system:node:${INSTANCE_HOSTNAME}",
   "key": {
     "algo": "rsa",
     "size": 2048
@@ -161,7 +162,7 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${instance},${EXTERNAL_IP},${INTERNAL_IP} \
+  -hostname=${INSTANCE_HOSTNAME},${EXTERNAL_IP},${INTERNAL_IP} \
   -profile=kubernetes \
   ${instance}-csr.json | cfssljson -bare ${instance}
 done
