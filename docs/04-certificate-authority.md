@@ -20,6 +20,8 @@ Verify cfssl works by running:
 cfssl version
 ```
 
+You can also opt to install the pre-built binaries. See more information about his in [Prerequisites](01-prerequisites.md)
+
 ## Certificate Authority
 
 In this section you will provision a Certificate Authority that can be used to generate additional TLS certificates.
@@ -69,7 +71,7 @@ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
 }
 ```
 
-Results:
+Relevant certificate results:
 
 ```
 ca.csr (the signing request)

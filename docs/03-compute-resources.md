@@ -207,7 +207,7 @@ KUBERNETES_PUBLIC_ADDRESS=$(aws elbv2 describe-load-balancers \
 
 Another note:
 
-Once up and running you may notice error logs on your controller nodes from the `kube-apiserver` along the lines of:
+Later on, once up and running you may notice error logs on your controller nodes from the `kube-apiserver` along the lines of:
 
 ```
 http: TLS handshake error from x.x.x.x
@@ -226,7 +226,7 @@ aws ec2 create-key-pair --key-name kubernetes-the-hard-way --query 'KeyMaterial'
 chmod 400 kubernetes-the-hard-way.pem
 ```
 
-Note, before you start the next section, find out the Amazon AMI ID of the Ubuntu Server 18.04 image you will use. These can differ based on what region you are in. For example at the time of writing, eu-west-2 has `ami-14fb1073`.
+Note, before you start the next section, find out the Amazon AMI ID of the Ubuntu Server 18.04 image you will use. These can differ based on what region you are in. For example at the time of writing, `eu-west-2` has `ami-14fb1073`.
 
 ### Kubernetes Controllers
 
@@ -283,23 +283,6 @@ for i in 0 1 2; do
 done
 ```
 
-```
-for i in 0 1 2; do
-  gcloud compute instances create worker-${i} \
-    --async \
-    --boot-disk-size 200GB \
-    --can-ip-forward \
-    --image-family ubuntu-1804-lts \
-    --image-project ubuntu-os-cloud \
-    --machine-type n1-standard-1 \
-    --metadata pod-cidr=10.200.${i}.0/24 \
-    --private-network-ip 10.240.0.2${i} \
-    --scopes compute-rw,storage-ro,service-management,service-control,logging-write,monitoring \
-    --subnet kubernetes \
-    --tags kubernetes-the-hard-way,worker
-done
-```
-
 ### Verification
 
 List the controller and worker instances in your region, providing InstanceId and PublicIpAddress properties:
@@ -342,21 +325,7 @@ Test SSH access to the a couple of instances to verify this works (x.x.x.x is th
 ssh -i ./kubernetes-the-hard-way.pem ubuntu@x.x.x.x
 ```
 
-After the SSH keys have been updated you'll be logged into the `controller-0` instance:
-
-```
-Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-1042-gcp x86_64)
-...
-
-Last login: Sun Sept 14 14:34:27 2019 from XX.XXX.XXX.XX
-```
-
-Type `exit` at the prompt to exit the `controller-0` compute instance:
-
-```
-$USER@controller-0:~$ exit
-```
-> output
+Logout once connection tests are successful.
 
 ```
 logout
