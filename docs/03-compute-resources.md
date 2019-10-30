@@ -247,7 +247,7 @@ for i in 0 1 2; do
     --security-group-ids sg-023d0a26f29ddb360 \
     --subnet-id subnet-0c301e597f5640660 \
     --user-data "name=controller-${NUM}" \
-    --private-ip-address 10.240.0.1${i} \
+    --private-ip-address 10.240.0.1${NUM} \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=controller-${NUM}},{Key=Kubernetes-Type,Value=controller}]" \
     --output text --query 'Instances[].InstanceId')
   aws ec2 modify-instance-attribute --instance-id ${INSTANCE_ID} --no-source-dest-check
@@ -275,7 +275,7 @@ for i in 0 1 2; do
     --security-group-ids sg-023d0a26f29ddb360 \
     --subnet-id subnet-0c301e597f5640660 \
     --user-data "pod-cidr=10.200.${NUM}.0/24" \
-    --private-ip-address 10.240.0.2${i} \
+    --private-ip-address 10.240.0.2${NUM} \
     --user-data "name=worker-${NUM}|pod-cidr=10.200.${NUM}.0/24" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=worker-${NUM}},{Key=Pod-CIDR,Value=10.0.${NUM}.0/24},{Key=Kubernetes-Type,Value=worker}]" \
     --output text --query 'Instances[].InstanceId')

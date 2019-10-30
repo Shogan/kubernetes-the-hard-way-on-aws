@@ -172,12 +172,11 @@ EOF
 
 ### Configure the Kubelet
 
-Start by getting the name of the worker instance that we setup earlier in the instance metadata, and changing the system hostname to match it:
+Start by getting the name of the worker instance that we setup earlier in the instance metadata:
 
 ```
 WORKER_NAME=$(curl -s http://169.254.169.254/latest/user-data/ | tr "|" "\n" \
   | grep "^name" | cut -d"=" -f2)
-sudo hostname $WORKER_NAME
 ```
 
 Move the kubelet certificates into place:
@@ -298,13 +297,12 @@ EOF
 
 ## Verification
 
-> The compute instances created in this tutorial will not have permission to complete this section. Run the following commands from the same machine used to create the compute instances.
+> The compute instances created in this tutorial will not have permission to complete this section. Run the following commands from the first controller instance (or any other controller) for verification.
 
 List the registered Kubernetes nodes:
 
 ```
-gcloud compute ssh controller-0 \
-  --command "kubectl get nodes --kubeconfig admin.kubeconfig"
+kubectl get nodes --kubeconfig admin.kubeconfig
 ```
 
 > output
