@@ -135,9 +135,11 @@ Kubernetes uses a [special-purpose authorization mode](https://kubernetes.io/doc
 Generate a certificate and private key for each Kubernetes worker node:
 
 ```
-for instance in worker-0 worker-1 worker-2; do
-INSTANCE_HOSTNAME="ip-10-240-0-2${i}"
-cat > ${instance}-csr.json <<EOF
+for i in 0 1 2; do
+NUM=${i}
+WORKER=worker-${NUM}
+INSTANCE_HOSTNAME="ip-10-240-0-2${NUM}"
+cat > ${WORKER}-csr.json <<EOF
 {
   "CN": "system:node:${INSTANCE_HOSTNAME}",
   "key": {
@@ -156,9 +158,9 @@ cat > ${instance}-csr.json <<EOF
 }
 EOF
 
-EXTERNAL_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${instance}" | jq -r '.Reservations | .[] | .Instances | .[] | select(.State.Name!="terminated") | .PublicIpAddress')
+EXTERNAL_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${WORKER}" | jq -r '.Reservations | .[] | .Instances | .[] | select(.State.Name!="terminated") | .PublicIpAddress')
 
-INTERNAL_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${instance}" | jq -r '.Reservations | .[] | .Instances | .[] | select(.State.Name!="terminated") | .PrivateIpAddress')
+INTERNAL_IP=$(aws ec2 describe-instances --filters "Name=tag:Name,Values=${WORKER}" | jq -r '.Reservations | .[] | .Instances | .[] | select(.State.Name!="terminated") | .PrivateIpAddress')
 
 cfssl gencert \
   -ca=ca.pem \
@@ -166,7 +168,7 @@ cfssl gencert \
   -config=ca-config.json \
   -hostname=${INSTANCE_HOSTNAME},${EXTERNAL_IP},${INTERNAL_IP} \
   -profile=kubernetes \
-  ${instance}-csr.json | cfssljson -bare ${instance}
+  ${WORKER}-csr.json | cfssljson -bare ${WORKER}
 done
 ```
 
