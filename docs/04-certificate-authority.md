@@ -418,7 +418,7 @@ for instance in worker-0 worker-1 worker-2; do
     --filters "Name=tag:Name,Values=${instance}" \
     --output text --query 'Reservations[].Instances[].PublicIpAddress')
 
-  scp -i kubernetes-the-hard-way.pem ${instance}-key.pem ${instance}.pem ubuntu@${PUBLIC_IP}:~/
+  scp -i kubernetes-the-hard-way.pem ca.pem ${instance}-key.pem ${instance}.pem ubuntu@${PUBLIC_IP}:~/
 done
 ```
 
