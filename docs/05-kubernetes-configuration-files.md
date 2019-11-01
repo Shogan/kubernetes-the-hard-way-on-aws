@@ -8,7 +8,7 @@ In this section you will generate kubeconfig files for the `controller manager`,
 
 ### Kubernetes Public IP Address
 
-Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the IP address assigned to the external load balancer fronting the Kubernetes API Servers will be used.
+Each kubeconfig requires a Kubernetes API Server to connect to. To support high availability the DNS name assigned to the external load balancer fronting the Kubernetes API Servers will be used.
 
 Retrieve the `kubernetes-the-hard-way` Network Load Balancer public DNS name if you haven't already got it in a shell variable:
 

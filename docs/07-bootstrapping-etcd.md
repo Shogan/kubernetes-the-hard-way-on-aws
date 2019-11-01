@@ -47,7 +47,7 @@ The instance internal IP address will be used to serve client requests and commu
 INTERNAL_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
 ```
 
-Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current compute instance:
+Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the name of the current compute instance:
 
 We stored this information with custom metadata when we started the EC2 instances with the `aws ec2 run-instance`commands.
 

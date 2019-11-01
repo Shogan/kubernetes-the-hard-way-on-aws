@@ -37,7 +37,7 @@ for instance in worker-0 worker-1 worker-2; do
     --attribute userData \
     --output text --query 'UserData.Value' \
     | base64 --decode | tr "|" "\n" | grep "^pod-cidr" | cut -d'=' -f2)"
-  echo "${INSTANCE_IP} ${pod_cidr}"
+  echo "InstanceId: ${INSTANCE_ID} Instance Private IP: ${INSTANCE_IP} POD CIDR: ${pod_cidr}"
 
   aws ec2 create-route \
     --route-table-id "${ROUTE_TABLE_ID}" \

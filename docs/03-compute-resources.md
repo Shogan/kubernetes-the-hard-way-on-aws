@@ -35,6 +35,13 @@ Take note of the VpcId of the newly created VPC. E.g.
     }
 }
 
+As we're using our own, dedicated VPC for kubernetes the hard way, we'll allow the VPC to handle DNS for us. Enable VPC DNS and DNS Hostnames.
+
+```
+aws ec2 modify-vpc-attribute --vpc-id vpc-09ad9421856ac72a3 --enable-dns-support '{"Value": true}'
+aws ec2 modify-vpc-attribute --vpc-id vpc-09ad9421856ac72a3 --enable-dns-hostnames '{"Value": true}'
+```
+
 ### Public Subnet Creation
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
@@ -226,7 +233,15 @@ aws ec2 create-key-pair --key-name kubernetes-the-hard-way --query 'KeyMaterial'
 chmod 400 kubernetes-the-hard-way.pem
 ```
 
-Note, before you start the next section, find out the Amazon AMI ID of the Ubuntu Server 18.04 image you will use. These can differ based on what region you are in. For example at the time of writing, `eu-west-2` has `ami-14fb1073`.
+Note, before you start the next section, find out the Amazon AMI ID of the Ubuntu Server 18.04 image you will use. These can differ based on what region you are in. Use the following command to get an ubuntu bionic 18.04 server image AMI straight from canonical (owner ID `099720109477`):
+
+```
+IMAGE_AMI_ID=$(aws ec2 describe-images --owners 099720109477 \
+  --filters 'Name=root-device-type,Values=ebs' \
+  'Name=architecture,Values=x86_64' \
+  'Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*' \
+  | jq -r '.Images|sort_by(.Name)[-1]|.ImageId')
+```
 
 ### Kubernetes Controllers
 
@@ -240,7 +255,7 @@ The controller instances will have IPs from 10.240.0.10-12
 for i in 0 1 2; do
   NUM=${i}
   INSTANCE_ID=$(aws ec2 run-instances \
-    --image-id ami-14fb1073 \
+    --image-id $IMAGE_AMI_ID \
     --block-device-mapping DeviceName=/dev/sda1,Ebs={VolumeSize=60} \
     --count 1 --instance-type t2.micro \
     --key-name kubernetes-the-hard-way \
@@ -268,7 +283,7 @@ Create three compute instances which will host the Kubernetes worker nodes:
 for i in 0 1 2; do
   NUM=${i}
   INSTANCE_ID=$(aws ec2 run-instances \
-    --image-id ami-14fb1073 \
+    --image-id $IMAGE_AMI_ID \
     --block-device-mapping DeviceName=/dev/sda1,Ebs={VolumeSize=60} \
     --count 1 --instance-type t2.micro \
     --key-name kubernetes-the-hard-way \

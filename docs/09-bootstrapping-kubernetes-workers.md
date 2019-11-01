@@ -215,7 +215,7 @@ tlsPrivateKeyFile: "/var/lib/kubelet/${WORKER_NAME}-key.pem"
 EOF
 ```
 
-> The `resolvConf` configuration is used to avoid loops when using CoreDNS for service discovery on systems running `systemd-resolved`. 
+> The `resolvConf` configuration is used to avoid loops when using CoreDNS for service discovery on systems running `systemd-resolved` (such as ubuntu bionic 18.04).
 
 Create the `kubelet.service` systemd unit file:
 
